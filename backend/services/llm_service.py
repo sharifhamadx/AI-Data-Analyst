@@ -3,7 +3,10 @@ LLM Service
 Handles Ollama model loading. One model per request — no auto-fallback.
 """
 
-from langchain_ollama import ChatOllama
+try:
+    from langchain_ollama import ChatOllama
+except ImportError:
+    ChatOllama = None
 from config.config import Config
 
 

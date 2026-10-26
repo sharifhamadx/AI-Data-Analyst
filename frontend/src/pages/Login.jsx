@@ -1,57 +1,83 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const { login, user } = useAuth()
-  const navigate = useNavigate()
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const [isLogin, setIsLogin] = useState(true);
+  const [agreed, setAgreed] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
 
-  if (user) { navigate('/', { replace: true }); return null }
+  useEffect(() => { document.dir = i18n.language === 'ar' ? 'rtl' : 'ltr'; }, [i18n.language]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!email || !password) { setError('Fill in all fields'); return }
+    e.preventDefault();
+    if (!agreed) return alert('يجب الموافقة على القوانين');
+    
     try {
-      setLoading(true); setError('')
-      await login(email, password)
-      navigate('/', { replace: true })
-    } catch (err) {
-      setError(err.response?.data?.error || 'Login failed')
-    } finally { setLoading(false) }
-  }
+      const url = isLogin ? 'http://127.0.0.1:5000/api/login' : 'http://127.0.0.1:5000/api/signup';
+      const res = await axios.post(url, formData);
+      
+      // حفظ بيانات المستخدم في المتصفح
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      navigate('/');
+    } catch (error) {
+      alert(error.response?.data?.error || 'خطأ في الاتصال بالخادم');
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">AI Data Analyst</h1>
-          <p className="text-gray-500 mt-2">Sign in to your account</p>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '20px' }}>
+      <div className="card" style={{ padding: '40px', width: '100%', maxWidth: '450px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <h1 style={{ color: '#0056d2', margin: 0 }}>👑 Rinas</h1>
+          <h3 style={{ color: '#4b5563', marginTop: '10px' }}>{isLogin ? t('login_title') : 'إنشاء حساب جديد'}</h3>
         </div>
-        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">{error}</div>}
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-medium mb-2">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+
+        <button onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')} className="btn-secondary" style={{ width: '100%', marginBottom: '20px' }}>
+          {t('switch_lang')}
+        </button>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {!isLogin && (
+            <input type="text" placeholder="الاسم الكامل" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db' }} />
+          )}
+          <input type="email" placeholder={t('email')} required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} style={{ padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db' }} />
+          <input type="password" placeholder={t('password')} required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={{ padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db' }} />
+          
+          <div style={{ background: '#f3f4f6', padding: '15px', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
+            <button type="button" onClick={() => setShowModal(true)} style={{ background: 'none', border: 'none', color: '#0056d2', textDecoration: 'underline', cursor: 'pointer', marginBottom: '10px' }}>{t('read_terms')}</button>
+            <label style={{ display: 'flex', gap: '10px', alignItems: 'center', color: '#374151', fontSize: '13px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> {t('gdpr_login_consent')}
+            </label>
           </div>
-          <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-medium mb-2">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-          </div>
-          <button type="submit" disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
-            {loading ? 'Signing in...' : 'Sign In'}
+
+          <button type="submit" disabled={!agreed} className="btn-primary" style={{ padding: '12px' }}>
+            {isLogin ? t('login_btn') : 'إنشاء الحساب'}
           </button>
         </form>
-        <p className="text-center mt-6 text-sm text-gray-500">
-          Don't have an account? <Link to="/signup" className="text-blue-600 hover:text-blue-800 font-medium">Sign up</Link>
+
+        <p style={{ textAlign: 'center', marginTop: '20px', color: '#4b5563', fontSize: '13px' }}>
+          {isLogin ? "لا تملك حساباً؟ " : "لديك حساب بالفعل؟ "}
+          <span onClick={() => setIsLogin(!isLogin)} style={{ color: '#0056d2', cursor: 'pointer', fontWeight: 'bold' }}>
+            {isLogin ? "سجل الآن" : "تسجيل الدخول"}
+          </span>
         </p>
       </div>
+
+      {showModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="card" style={{ padding: '30px', maxWidth: '500px' }}>
+            <h2 style={{ color: '#0056d2', marginBottom: '15px' }}>{t('terms_title')}</h2>
+            <p style={{ color: '#4b5563', lineHeight: '1.8', marginBottom: '20px' }}>{t('terms_content')}</p>
+            <button onClick={() => { setAgreed(true); setShowModal(false); }} className="btn-primary" style={{ width: '100%' }}>{t('agree_close')}</button>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }

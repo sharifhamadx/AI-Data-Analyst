@@ -1,3 +1,21 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+
+:root {
+  --bg-main: #f5f7f8; --bg-card: #ffffff; --text-main: #1f2937; --text-sub: #4b5563; 
+  --border: #e5e7eb; --btn-bg: #0056d2; --btn-text: #ffffff;
+}
+
+[data-theme='dark'] {
+  --bg-main: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc; --text-sub: #cbd5e1; 
+  --border: #334155; --btn-bg: #3b82f6;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+body { background: var(--bg-main); color: var(--text-main); font-size: 14px; line-height: 1.6; transition: background 0.3s, color 0.3s; }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 24px; transition: background 0.3s; color: var(--text-main); }
+.btn-primary { background: var(--btn-bg); color: var(--btn-text); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+.btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+.btn-secondary { background: transparent; color: var(--btn-bg); border: 1px solid var(--btn-bg); padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+input, select, textarea { background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border); outline: none; }
+table th { color: var(--text-main); border-bottom: 2px solid var(--border); }
+table td { color: var(--text-sub); border-bottom: 1px solid var(--border); }

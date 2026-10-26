@@ -326,7 +326,8 @@ def run_full_analysis(filepath):
 
     # IMPORTANT:
     # limit chunk count for low RAM laptops
-    add_chunks(filepath)
+    # bypassed RAG temporarily for mobile performance
+    pass
 
     return {
         'summary': get_summary_statistics(df),

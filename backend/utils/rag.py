@@ -7,7 +7,10 @@ from typing import List
 import faiss
 import numpy as np
 import pandas as pd
-from sentence_transformers import SentenceTransformer
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +40,18 @@ _embedding_model = None
 def get_embedding_model():
     global _embedding_model
 
+    if SentenceTransformer is None:
+        raise RuntimeError(
+            "Semantic search is unavailable: sentence-transformers is not installed."
+        )
+
     if _embedding_model is None:
         logger.info("Loading embedding model...")
         _embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
         logger.info("Embedding model loaded.")
 
     return _embedding_model
+
 
 
 # =========================================================
@@ -162,38 +171,36 @@ def dataframe_to_chunks(df: pd.DataFrame) -> List[str]:
 # =========================================================
 
 def build_vector_store(filepath: str):
+    """Build the semantic index when the embedding library is available."""
+    if SentenceTransformer is None:
+        logger.warning(
+            "Semantic search unavailable: sentence-transformers is not installed. "
+            "Text-based retrieval will be used instead."
+        )
+        return
 
     index_path, metadata_path = get_cache_paths(filepath)
-
     if os.path.exists(index_path) and os.path.exists(metadata_path):
         logger.info("Using cached FAISS index.")
         return
 
     logger.info("Building FAISS vector store...")
-
-    df = pd.read_csv(filepath)
-
-    df = optimize_dataframe(df)
+    df = optimize_dataframe(pd.read_csv(filepath))
     df = select_high_signal_rows(df)
-
     chunks = dataframe_to_chunks(df)
 
     if not chunks:
-        raise ValueError("No valid chunks generated.")
+        logger.warning("No valid chunks generated for vector store.")
+        return
 
     model = get_embedding_model()
-
-    embeddings = model.encode(
-        chunks,
-        show_progress_bar=False,
-        convert_to_numpy=True
+    embeddings = np.asarray(
+        model.encode(chunks, show_progress_bar=False, convert_to_numpy=True),
+        dtype=np.float32
     )
-
-    embeddings = np.array(embeddings, dtype=np.float32)
 
     index = faiss.IndexFlatL2(embeddings.shape[1])
     index.add(embeddings)
-
     faiss.write_index(index, index_path)
 
     with open(metadata_path, "wb") as f:
@@ -201,56 +208,55 @@ def build_vector_store(filepath: str):
 
     logger.info("FAISS vector store created successfully.")
 
-
-# =========================================================
-# RETRIEVAL
-# =========================================================
-
 def retrieve_relevant_chunks(filepath: str, query: str, top_k: int = TOP_K_RESULTS) -> List[str]:
+    """Retrieve relevant CSV rows using embeddings or a lightweight text fallback."""
+    def text_fallback():
+        df = pd.read_csv(filepath)
+        chunks = dataframe_to_chunks(select_high_signal_rows(df))
+        terms = set(re.findall(r"\\w+", query.lower()))
+        if not terms:
+            return chunks[:top_k]
 
-    index_path, metadata_path = get_cache_paths(filepath)
+        def score(chunk):
+            words = set(re.findall(r"\\w+", chunk.lower()))
+            return len(terms & words)
 
-    if not os.path.exists(index_path) or not os.path.exists(metadata_path):
-        build_vector_store(filepath)
+        ranked = sorted(enumerate(chunks), key=lambda item: (-score(item[1]), item[0]))
+        matches = [chunk for _, chunk in ranked if score(chunk) > 0]
+        return (matches or chunks)[:top_k]
 
-    index = faiss.read_index(index_path)
+    if SentenceTransformer is None:
+        logger.info("Using text-based retrieval because sentence-transformers is unavailable.")
+        return text_fallback()
 
-    with open(metadata_path, "rb") as f:
-        chunks = pickle.load(f)
+    try:
+        index_path, metadata_path = get_cache_paths(filepath)
+        if not os.path.exists(index_path) or not os.path.exists(metadata_path):
+            build_vector_store(filepath)
 
-    model = get_embedding_model()
+        if not os.path.exists(index_path) or not os.path.exists(metadata_path):
+            return text_fallback()
 
-    query_embedding = model.encode(
-        [query],
-        show_progress_bar=False,
-        convert_to_numpy=True
-    )
+        index = faiss.read_index(index_path)
+        with open(metadata_path, "rb") as f:
+            chunks = pickle.load(f)
 
-    query_embedding = np.array(query_embedding, dtype=np.float32)
+        model = get_embedding_model()
+        query_embedding = np.asarray(
+            model.encode([query], show_progress_bar=False, convert_to_numpy=True),
+            dtype=np.float32
+        )
+        _, indices = index.search(query_embedding, top_k)
 
-    _, indices = index.search(query_embedding, top_k)
+        results = []
+        for idx in indices[0]:
+            if 0 <= idx < len(chunks) and chunks[idx] not in results:
+                results.append(chunks[idx])
+        return results or text_fallback()
 
-    results = []
-    seen = set()
-
-    for idx in indices[0]:
-        if idx >= len(chunks):
-            continue
-
-        chunk = chunks[idx]
-
-        if chunk in seen:
-            continue
-
-        seen.add(chunk)
-        results.append(chunk)
-
-    return results
-
-
-# =========================================================
-# COMPRESSED CONTEXT
-# =========================================================
+    except Exception as exc:
+        logger.warning("Semantic retrieval failed; using text fallback: %s", exc)
+        return text_fallback()
 
 def get_compressed_context(filepath: str, query: str, top_k: int = TOP_K_RESULTS) -> str:
     chunks = retrieve_relevant_chunks(filepath, query, top_k)
