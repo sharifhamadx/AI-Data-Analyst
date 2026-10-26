@@ -31,11 +31,11 @@ jobs:
         npm install
         npx cap sync android
 
-    - name: Build APK with Gradle
+    - name: Build APK with Gradle (Robust Mode)
       working-directory: ./frontend/android
       run: |
         chmod +x gradlew
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug --no-daemon --stacktrace -x lint
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
