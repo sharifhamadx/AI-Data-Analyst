@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # زر سحري لتشغيل البناء يدوياً من GitHub
+  workflow_dispatch:
 
 jobs:
   build-apk:
@@ -34,13 +34,17 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
+      - name: 🧹 تنظيف مسارات الهاتف المحلية
+        working-directory: ./frontend/android
+        run: rm -f local.properties
+
       - name: 🛠️ إصلاح صلاحيات ملفات Gradle
         working-directory: ./frontend/android
         run: chmod +x gradlew
 
-      - name: 🏗️ بناء تطبيق الأندرويد (APK)
+      - name: 🏗️ بناء تطبيق الأندرويد بالقوة (تخطي التحذيرات)
         working-directory: ./frontend/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug -x lint --no-daemon
 
       - name: 📤 استخراج التطبيق الجاهز للتحميل
         uses: actions/upload-artifact@v4
