@@ -4,41 +4,46 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  workflow_dispatch: # زر سحري لتشغيل البناء يدوياً من GitHub
 
 jobs:
-  build:
+  build-apk:
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: 📥 جلب كود المشروع
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
+      - name: ⚙️ إعداد بيئة Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-    - name: Setup Java JDK 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'zulu'
-        java-version: '17'
+      - name: 📦 تثبيت مكتبات الواجهة وبنائها
+        working-directory: ./frontend
+        run: |
+          npm install
+          npm run build
+          npx cap sync android
 
-    - name: Install Dependencies & Sync Capacitor
-      working-directory: ./frontend
-      run: |
-        npm install
-        npx cap sync android
+      - name: ☕ إعداد بيئة Java للأندرويد
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
 
-    - name: Build APK with Gradle (Robust Mode)
-      working-directory: ./frontend/android
-      run: |
-        chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon --stacktrace -x lint
+      - name: 🛠️ إصلاح صلاحيات ملفات Gradle
+        working-directory: ./frontend/android
+        run: chmod +x gradlew
 
-    - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: rinas-app
-        path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: 🏗️ بناء تطبيق الأندرويد (APK)
+        working-directory: ./frontend/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: 📤 استخراج التطبيق الجاهز للتحميل
+        uses: actions/upload-artifact@v4
+        with:
+          name: Renas-Wallet-App
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
