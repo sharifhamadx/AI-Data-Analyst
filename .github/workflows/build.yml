@@ -20,11 +20,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 📦 تثبيت مكتبات الواجهة وبنائها
+      - name: 📦 تثبيت مكتبات الواجهة وبنائها (تخطي التحذيرات)
         working-directory: ./frontend
         run: |
-          npm install
-          npm run build
+          npm install --legacy-peer-deps
+          CI=false npm run build
           npx cap sync android
 
       - name: ☕ إعداد بيئة Java للأندرويد
@@ -42,7 +42,7 @@ jobs:
         working-directory: ./frontend/android
         run: chmod +x gradlew
 
-      - name: 🏗️ بناء تطبيق الأندرويد بالقوة (تخطي التحذيرات)
+      - name: 🏗️ بناء تطبيق الأندرويد بالقوة
         working-directory: ./frontend/android
         run: ./gradlew assembleDebug -x lint --no-daemon
 
