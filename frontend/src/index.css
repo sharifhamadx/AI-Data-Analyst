@@ -19,3 +19,12 @@ body { background: var(--bg-main); color: var(--text-main); font-size: 14px; lin
 input, select, textarea { background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border); outline: none; }
 table th { color: var(--text-main); border-bottom: 2px solid var(--border); }
 table td { color: var(--text-sub); border-bottom: 1px solid var(--border); }
+
+/* Navbar responsive */
+.nav-desktop { display: flex !important; }
+.nav-mobile { display: none !important; }
+
+@media (max-width: 768px) {
+  .nav-desktop { display: none !important; }
+  .nav-mobile { display: flex !important; }
+}
