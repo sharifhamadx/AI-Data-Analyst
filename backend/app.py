@@ -16,7 +16,7 @@ from routes.analysis_routes import analysis_bp
 from routes.history_routes import history_bp
 
 # Ensure logs directory exists (called at import time so Gunicorn workers have it)
-os.makedirs(os.path.join(os.path.dirname(__file__), 'logs'), exist_ok=True)
+# logs disabled for Vercel
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,7 +24,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(os.path.join(os.path.dirname(__file__), 'logs', 'app.log')),
+        # File logging disabled
     ],
 )
 
@@ -32,6 +32,8 @@ logging.basicConfig(
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
+    app.config['CHART_FOLDER'] = '/tmp/charts'
 
     CORS(app)
     init_extensions(app)
