@@ -34,6 +34,7 @@ def create_app():
     app.config.from_object(Config)
     app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
     app.config['CHART_FOLDER'] = '/tmp/charts'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/database.db'
 
     CORS(app)
     init_extensions(app)
