@@ -64,9 +64,10 @@ def create_app():
     return app
 
 
+app = create_app()
+
 if __name__ == '__main__':
     logging.getLogger('api').info('Starting AI Data Analyst API (dev mode)...')
-    app = create_app()
     app.run(
     debug=Config.DEBUG,
     port=Config.FLASK_PORT,
