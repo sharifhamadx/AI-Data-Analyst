@@ -67,7 +67,18 @@ def create_app():
     return app
 
 
-app = create_app()
+
+import traceback
+try:
+    app = create_app()
+except Exception as e:
+    app = Flask(__name__)
+    err_msg = traceback.format_exc()
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def catch_all(path):
+        return f"<pre style='background:#111;color:#ff5555;padding:20px;font-size:14px;'>{err_msg}</pre>", 500
+
 
 if __name__ == '__main__':
     logging.getLogger('api').info('Starting AI Data Analyst API (dev mode)...')
